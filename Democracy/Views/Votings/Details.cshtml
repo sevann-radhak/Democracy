@@ -93,6 +93,13 @@
     </dl>
 </div>
 <p>
-    @Html.ActionLink("Edit", "Edit", new { id = Model.VoutingId }) |
-    @Html.ActionLink("Back to List", "Index")
+    @Html.ActionLink("Edit", "Edit", new { id = Model.VotingId }, new { @class = "btn btn-primary btn-sm" })
+
+    @if (!Model.IsForAllUsers)
+    {
+        @Html.ActionLink("Add group", "AddGroup", new { id = Model.VotingId }, new { @class = "btn btn-warning btn-sm" })
+    }
+
+    @Html.ActionLink("Add candidate", "AddCandidate", new { votingId = Model.VotingId }, new { @class = "btn btn-info btn-sm" })
+    @Html.ActionLink("Back to List", "Index", new { }, new { @class = "btn btn-default btn-sm" })
 </p>

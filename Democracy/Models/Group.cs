@@ -22,8 +22,13 @@ namespace Democracy.Models
         public string Description { get; set; }
 
         /// <summary>
-        /// Foreing key to GroupMember
+        /// Foreing key ICollection<GroupMembers>
         /// </summary>
         public virtual ICollection<GroupMember> GroupMembers { get; set; }
+
+        /// <summary>
+        /// Foreing key ICollection<VotingGroup>
+        /// </summary>
+        public virtual ICollection<VotingGroup> VotingGroup { get; set; }
     }
 }
