@@ -1,10 +1,10 @@
-﻿@model IEnumerable<Democracy.Models.State>
+﻿@model IEnumerable<Democracy.Models.Group>
 
 @{
     ViewBag.Title = "Index";
 }
 
-<h2>States</h2>
+<h2>Groups</h2>
 
 <p>
     @Html.ActionLink("Create New", "Create")
@@ -23,9 +23,9 @@
             @Html.DisplayFor(modelItem => item.Description)
         </td>
         <td>
-            @Html.ActionLink("Edit", "Edit", new { id=item.StateId }) |
-            @Html.ActionLink("Details", "Details", new { id=item.StateId }) |
-            @Html.ActionLink("Delete", "Delete", new { id=item.StateId })
+            @Html.ActionLink("Edit", "Edit", new { id=item.GroupId }) |
+            @Html.ActionLink("Details", "Details", new { id=item.GroupId }) |
+            @Html.ActionLink("Delete", "Delete", new { id=item.GroupId })
         </td>
     </tr>
 }
