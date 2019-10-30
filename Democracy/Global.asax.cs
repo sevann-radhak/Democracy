@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Web;
 using System.Web.Http;
@@ -13,6 +14,10 @@ namespace Democracy
     {
         protected void Application_Start()
         {
+            // Automatic Migrations Enable
+            Database.SetInitializer(
+                new MigrateDatabaseToLatestVersion<Context.DemocracyContext, Migrations.Configuration>());
+
             AreaRegistration.RegisterAllAreas();
             GlobalConfiguration.Configure(WebApiConfig.Register);
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
