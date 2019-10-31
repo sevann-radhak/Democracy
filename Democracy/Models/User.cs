@@ -52,8 +52,13 @@ namespace Democracy.Models
         public string FullName { get { return string.Format("{0} {1}", this.FirstName, this.LastName); } }
 
         /// <summary>
-        /// Foreing key to GroupMember
+        /// Foreign key Foreing key to GroupMember
         /// </summary>
         public virtual ICollection<GroupMember> GroupMembers { get; set; }
+
+        /// <summary>
+        /// Foreign key Foreing key to Candidate
+        /// </summary>
+        public virtual ICollection<Candidate> Candidates { get; set; }
     }
 }

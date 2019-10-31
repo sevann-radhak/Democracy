@@ -1,14 +1,14 @@
-﻿using System;
+﻿using Democracy.Models;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Web;
 
-namespace Democracy.Models
+namespace Democracy.ModelsView
 {
-    public class Voting
+    public class DetailsVotingView
     {
-        [Key]
         public int VotingId { get; set; }
 
         [Required(ErrorMessage = "The field {0} is required")]
@@ -55,16 +55,16 @@ namespace Democracy.Models
         /// <summary>
         /// Foreing key to State model
         /// </summary>
-        public virtual State State { get; set; }
+        public State State { get; set; }
 
         /// <summary>
         /// Foreign key ICollection<VotingGroup>
         /// </summary>
-        public virtual ICollection<VotingGroup> VotingGroups { get; set; }
+        public List<VotingGroup> VotingGroups { get; set; }
 
         /// <summary>
         /// Foreign key ICollection<Candidate>
         /// </summary>
-        public virtual ICollection<Candidate> Candidates { get; set; }
+        public List<Candidate> Candidates { get; set; }
     }
 }

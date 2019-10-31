@@ -27,14 +27,14 @@
 
         <div class="form-group">
             <div class="col-md-offset-2 col-md-10">
-                <input type="submit" value="Add member" class="btn btn-success" />
+                <input type="submit" value="Add member" class="btn btn-success btn-sm" />
             </div>
         </div>
     </div>
 }
 
 <div>
-    @Html.ActionLink("Back to List", "Index", new { } , new { @class = "btn btn-default" })
+    @Html.ActionLink("Back to group", "Index", new { Model.GroupId }, new { @class = "btn btn-default btn-sm" })
 </div>
 
 @section Scripts {
