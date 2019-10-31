@@ -24,10 +24,19 @@
                     <li>@Html.ActionLink("Home", "Index", "Home")</li>
                     <li>@Html.ActionLink("About", "About", "Home")</li>
                     <li>@Html.ActionLink("Contact", "Contact", "Home")</li>
-                    <li>@Html.ActionLink("State", "Index", "States")</li>
-                    <li>@Html.ActionLink("Groups", "Index", "Groups")</li>
-                    <li>@Html.ActionLink("Votings", "Index", "Votings")</li>
-                    <li>@Html.ActionLink("Users", "Index", "Users")</li>
+                    @if (this.User.IsInRole("Admin"))
+                    {
+                        <li>@Html.ActionLink("State", "Index", "States")</li>
+                        <li>@Html.ActionLink("Groups", "Index", "Groups")</li>
+                        <li>@Html.ActionLink("Votings", "Index", "Votings")</li>
+                        <li>@Html.ActionLink("Users", "Index", "Users")</li>
+                    }
+                    @if (this.User.IsInRole("User"))
+                    {
+                        <li>@Html.ActionLink("Settings", "MySettings", "Users")</li>
+                        <li>@Html.ActionLink("My votings", "MyVotings", "Votings")</li>
+                        <li>@Html.ActionLink("Results", "Results", "Votings")</li>
+                    }
                 </ul>
                 @Html.Partial("_LoginPartial")
             </div>

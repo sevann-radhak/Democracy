@@ -10,30 +10,31 @@
     {
         @Html.AntiForgeryToken()
 
-        <div class="form-horizontal">
-            <h4>Candidate</h4>
-            <hr />
-            @Html.ValidationSummary(true)
-            @Html.HiddenFor(model => model.VotingId)
+<div class="form-horizontal">
+    <h4>Candidate</h4>
+    <hr />
 
-            <div class="form-group">
-                @Html.LabelFor(model => model.UserId, "User", htmlAttributes: new { @class = "control-label col-md-2" })
-                <div class="col-md-10">
-                    @Html.DropDownList("UserId", null, htmlAttributes: new { @class = "form-control select-add-placeholder", required = "required" })
-                    @Html.ValidationMessageFor(model => model.UserId, "", new { @class = "text-danger" })
-                </div>
-            </div>
+    @Html.ValidationSummary(true, "", new { @class = "text-danger" })
+    @Html.HiddenFor(model => model.VotingId)
 
-            <div class="form-group">
-                <div class="col-md-offset-2 col-md-10">
-                    <input type="submit" value="Add candidate" class="btn btn-success btn-sm" />
-                </div>
-            </div>
+    <div class="form-group">
+        @Html.LabelFor(model => model.UserId, "User", htmlAttributes: new { @class = "control-label col-md-2" })
+        <div class="col-md-10">
+            @Html.DropDownList("UserId", null, htmlAttributes: new { @class = "form-control select-add-placeholder", required = "required" })
+            @Html.ValidationMessageFor(model => model.UserId, "", new { @class = "text-danger" })
         </div>
+    </div>
+
+    <div class="form-group">
+        <div class="col-md-offset-2 col-md-10">
+            <input type="submit" value="Add candidate" class="btn btn-success btn-sm" />
+        </div>
+    </div>
+</div>
     }
 
     <div>
-        @Html.ActionLink("Back to voting", "Index", new { id = Model.VotingId }, new { @class = "btn btn-default btn-sm" })
+        @Html.ActionLink("Back to voting", "Details", new { id = Model.VotingId }, new { @class = "btn btn-default btn-sm" })
     </div>
 
     @section Scripts {

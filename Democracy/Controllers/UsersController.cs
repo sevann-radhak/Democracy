@@ -15,15 +15,47 @@ using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace Democracy.Controllers
 {
-    //[Authorize]
+    [Authorize(Roles = "Admin")]
     public class UsersController : Controller
     {
         private DemocracyContext db = new DemocracyContext();
 
-        // GET: Users
+        /// <summary>
+        /// GET: Users
+        /// </summary>
+        /// <returns></returns>
         public ActionResult Index()
         {
-            return View(db.Users.ToList());
+
+            var userContext = new ApplicationDbContext();
+            var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(userContext));
+
+            var users = db.Users.ToList();
+
+            List<UserIndexView> usersView = new List<UserIndexView>();
+
+            foreach (var user in users)
+            {
+                var userASP = userManager.FindByName(user.UserName);
+
+                usersView.Add(new UserIndexView
+                {
+                    Address = user.Address,
+                    Candidates = user.Candidates,
+                    FirstName = user.FirstName,
+                    Grade = user.Grade,
+                    Group = user.Group,
+                    GroupMembers = user.GroupMembers,
+                    IsAdmin = userASP != null && userManager.IsInRole(userASP.Id, "Admin"),
+                    LastName = user.LastName,
+                    Phone = user.Phone,
+                    Photo = user.Photo,
+                    UserId = user.UserId,
+                    UserName = user.UserName
+                });
+            }
+            
+            return View(usersView);
         }
 
         // GET: Users/Details/5
@@ -47,9 +79,11 @@ namespace Democracy.Controllers
             return View();
         }
 
-        // POST: Users/Create
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
+        /// <summary>
+        /// POST: Users/Create
+        /// </summary>
+        /// <param name="userView"></param>
+        /// <returns></returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Create(UserView userView)
@@ -76,8 +110,8 @@ namespace Democracy.Controllers
                 }
             }
 
-            // Save record
-            var user = new User
+            // Create and save the record
+            User user = new User
             {
                 Address = userView.Address,
                 FirstName = userView.FirstName,
@@ -138,7 +172,7 @@ namespace Democracy.Controllers
             }
 
             // Create the ASP User
-            var userAPS = new ApplicationUser
+            var userASP = new ApplicationUser
             {
                 UserName = userView.UserName,
                 Email = userView.UserName,
@@ -146,14 +180,18 @@ namespace Democracy.Controllers
             };
 
             // Register the ASP User
-            userManager.Create(userAPS, userAPS.UserName);
+            userManager.Create(userASP, userASP.UserName);
 
             // Add user to role
-            userAPS = userManager.FindByName(userView.UserName);
-            userManager.AddToRole(userAPS.Id, roleName);
+            userASP = userManager.FindByName(userView.UserName);
+            userManager.AddToRole(userASP.Id, roleName);
         }
 
-        // GET: Users/Edit/5
+        /// <summary>
+        /// GET: Users/Edit/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -235,22 +273,33 @@ namespace Democracy.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Users/Delete/5
+        /// <summary>
+        /// GET: Users/Delete/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public ActionResult Delete(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
+
             User user = db.Users.Find(id);
+
             if (user == null)
             {
                 return HttpNotFound();
             }
+
             return View(user);
         }
 
-        // POST: Users/Delete/5
+        /// <summary>
+        /// POST: Users/Delete/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public ActionResult DeleteConfirmed(int id)
@@ -269,16 +318,52 @@ namespace Democracy.Controllers
                     && ex.InnerException.InnerException != null
                     && ex.InnerException.InnerException.Message.Contains("REFERENCE"))
                 {
-                    ViewBag.Error = "Cant not delete the record because has related records";
+                    ModelState.AddModelError(string.Empty, "Cant not delete the record because it has related records");
                 }
                 else
                 {
-                    ViewBag.Error = ex.Message;
+                    ModelState.AddModelError(string.Empty, ex.Message);
                 }
 
                 return View(user);
             }
             
+            return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// Users/OnOffAdmin/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public ActionResult OnOffAdmin(int? id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+
+            var user = db.Users.Find(id);
+
+            if(user != null)
+            {
+                var userContext = new ApplicationDbContext();
+                var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(userContext));
+                var userASP = userManager.FindByEmail(user.UserName);
+
+                if(userASP != null)
+                {
+                    if (userManager.IsInRole(userASP.Id, "Admin"))
+                    {
+                        userManager.RemoveFromRole(userASP.Id, "Admin");
+                    }
+                    else
+                    {
+                        userManager.AddToRole(userASP.Id, "Admin");
+                    }
+                }
+            }
+
             return RedirectToAction("Index");
         }
 
