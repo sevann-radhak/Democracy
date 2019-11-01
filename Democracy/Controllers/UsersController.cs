@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.Entity;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using CrystalDecisions.CrystalReports.Engine;
 using Democracy.Context;
 using Democracy.Models;
 using Democracy.ModelsView;
@@ -15,15 +18,97 @@ using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace Democracy.Controllers
 {
-    [Authorize(Roles = "Admin")]
     public class UsersController : Controller
     {
         private DemocracyContext db = new DemocracyContext();
 
         /// <summary>
+        /// GET: Edit personal info for usres
+        /// </summary>
+        /// <returns></returns>
+        [Authorize(Roles = "User")]
+        public ActionResult MySettings()
+        {
+            var user = db.Users.Where(u => u.UserName == this.User.Identity.Name).FirstOrDefault();
+
+            UserSettingsView userSettingsView = new UserSettingsView
+            {
+                Address = user.Address,
+                FirstName = user.FirstName,
+                Grade = user.Grade,
+                Group = user.Group,
+                LastName = user.LastName,
+                Phone = user.Phone,
+                Photo = user.Photo,
+                UserId = user.UserId,
+                UserName = user.UserName
+            };
+
+            return View(userSettingsView);
+        }
+
+        /// <summary>
+        /// POST: Edit personal info for usres
+        /// </summary>
+        /// <param name="view"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "User")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult MySettings(UserSettingsView view)
+        {
+            if (ModelState.IsValid)
+            {
+                // Upload image to server
+                string path = string.Empty;
+                string pic = string.Empty;
+
+                if (view.NewPhoto != null)
+                {
+                    pic = Path.GetFileName(view.NewPhoto.FileName);
+                    path = Path.Combine(Server.MapPath("~/Content/Photos"), pic);
+                    view.NewPhoto.SaveAs(path);
+
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        view.NewPhoto.InputStream.CopyTo(ms);
+                        byte[] array = ms.GetBuffer();
+                    }
+                }
+
+                // Create a User object
+                User user = db.Users.Find(view.UserId);
+
+                user.Address = view.Address;
+                user.FirstName = view.FirstName;
+                user.Grade = view.Grade;
+                user.Group = view.Group;
+                user.LastName = view.LastName;
+                user.Phone = view.Phone;
+
+                // Validate if user changes photo
+                if (!string.IsNullOrEmpty(pic))
+                {
+                    user.Photo = string.Format("~/Content/Photos/{0}", pic);
+                }
+
+                // Modify record
+                db.Entry(user).State = EntityState.Modified;
+                db.SaveChanges();
+
+                return RedirectToAction("Index", "Home");
+            }
+
+            
+
+            return View(view);
+        }
+
+        /// <summary>
         /// GET: Users
         /// </summary>
         /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Index()
         {
 
@@ -54,11 +139,16 @@ namespace Democracy.Controllers
                     UserName = user.UserName
                 });
             }
-            
+
             return View(usersView);
         }
 
-        // GET: Users/Details/5
+        /// <summary>
+        /// GET: Users/Details/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Details(int? id)
         {
             if (id == null)
@@ -74,6 +164,7 @@ namespace Democracy.Controllers
         }
 
         // GET: Users/Create
+        [Authorize(Roles = "Admin")]
         public ActionResult Create()
         {
             return View();
@@ -155,6 +246,7 @@ namespace Democracy.Controllers
         /// After creating User, create the ASP User
         /// </summary>
         /// <param name="user"></param>
+        [Authorize(Roles = "Admin")]
         private void CreateASPUser(UserView userView)
         {
             // User management
@@ -192,6 +284,7 @@ namespace Democracy.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -253,6 +346,7 @@ namespace Democracy.Controllers
 
             // Create a User object
             User user = db.Users.Find(userView.UserId);
+
             user.Address = userView.Address;
             user.FirstName = userView.FirstName;
             user.Grade = userView.Grade;
@@ -278,6 +372,7 @@ namespace Democracy.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Delete(int? id)
         {
             if (id == null)
@@ -327,7 +422,7 @@ namespace Democracy.Controllers
 
                 return View(user);
             }
-            
+
             return RedirectToAction("Index");
         }
 
@@ -336,6 +431,7 @@ namespace Democracy.Controllers
         /// </summary>
         /// <param name="id"></param>
         /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult OnOffAdmin(int? id)
         {
             if (id == null)
@@ -345,13 +441,13 @@ namespace Democracy.Controllers
 
             var user = db.Users.Find(id);
 
-            if(user != null)
+            if (user != null)
             {
                 var userContext = new ApplicationDbContext();
                 var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(userContext));
                 var userASP = userManager.FindByEmail(user.UserName);
 
-                if(userASP != null)
+                if (userASP != null)
                 {
                     if (userManager.IsInRole(userASP.Id, "Admin"))
                     {
@@ -365,6 +461,87 @@ namespace Democracy.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// Users report in PDF
+        /// </summary>
+        /// <param></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult PDF(int? id)
+        {
+            var report = this.GenerateUserReport();
+            var stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.PortableDocFormat);
+
+            return File(stream, "application/pdf");
+        }
+
+        /// <summary>
+        /// Users report in XLS
+        /// </summary>
+        /// <param></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult XLS(int? id)
+        {
+            var report = this.GenerateUserReport();
+            var stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.Excel);
+
+            return File(stream, "application/xls", "Users.xls");
+        }
+
+        /// <summary>
+        /// Users report in DOC
+        /// </summary>
+        /// <param></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult DOC(int? id)
+        {
+            var report = this.GenerateUserReport();
+            var stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.WordForWindows);
+
+            return File(stream, "application/doc", "Users.doc");
+        }
+
+        /// <summary>
+        /// Generate a report for differet formats
+        /// </summary>
+        /// <returns></returns>
+        private ReportClass GenerateUserReport()
+        {
+            // Variables and imports for ADO connection to DataBase
+            var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+            var connection = new SqlConnection(connectionString);
+            var dataTable = new DataTable();
+            var sql = "SELECT * FROM Users ORDER BY LastName, FirstName";
+
+            try
+            {
+                connection.Open();
+                var commmand = new SqlCommand(sql, connection);
+                var adapter = new SqlDataAdapter(commmand);
+
+                adapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                ex.ToString();
+                throw;
+            }
+
+            // Create the report object -> it will be the real report
+            var report = new ReportClass();
+            report.FileName = Server.MapPath("/Reports/Users.rpt");
+
+            // Load the report in memory
+            report.Load();
+
+            // Load data origin
+            report.SetDataSource(dataTable);
+
+            return report;
         }
 
         protected override void Dispose(bool disposing)

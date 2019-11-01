@@ -31,5 +31,7 @@ namespace Democracy.Context
         public DbSet<VotingGroup> VotingGroup { get; set; }
 
         public DbSet<Candidate> Candidates { get; set; }
+
+        public DbSet<VotingDetail> VotingDetails { get; set; }
     }
 }

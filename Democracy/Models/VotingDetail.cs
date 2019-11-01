@@ -1,4 +1,4 @@
-﻿    using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -6,17 +6,19 @@ using System.Web;
 
 namespace Democracy.Models
 {
-    public class Candidate
+    public class VotingDetail
     {
         [Key]
-        public int CandidateId { get; set; }
+        public int VotingDetailId { get; set; }
+
+        public DateTime DateTime { get; set; }
 
         public int VotingId { get; set; }
 
         public int UserId { get; set; }
 
-        public int QuantityVotes { get; set; }
-
+        public int CandidateId { get; set; }
+        
         /// <summary>
         /// Foreign key Voting
         /// </summary>
@@ -25,11 +27,12 @@ namespace Democracy.Models
         /// <summary>
         /// Foreign key User
         /// </summary>
+
         public virtual User User { get; set; }
 
         /// <summary>
-        /// Foreign key Foreing key to VotingDetail
+        /// Foreign key Candidate
         /// </summary>
-        public virtual ICollection<VotingDetail> VotingDetail { get; set; }
+        public virtual Candidate Candidate { get; set; }
     }
 }

@@ -128,7 +128,7 @@
                             </td>
 
                             <td>
-                                @Html.ActionLink("Delete", "DeleteGroup", new { id = Model.VotingGroups[i].Group.GroupId }, new { @class = "btn btn-danger btn-sm", onclick = "return confirm('Are you shure to delete this group?');" })
+                                @Html.ActionLink("Delete", "DeleteGroup", new { id = Model.VotingGroups[i].VotingGroupId }, new { @class = "btn btn-danger btn-sm", onclick = "return confirm('Are you shure to delete this group?');" })
                             </td>
                         </tr>
                     }

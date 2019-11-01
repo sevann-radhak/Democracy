@@ -1,15 +1,11 @@
 ﻿@model IEnumerable<Democracy.ModelsView.VotingIndexView>
 
 @{
-    ViewBag.Title = "Index";
+    ViewBag.Title = "Results";
 }
 
-<h2>Votings</h2>
-@Html.ValidationSummary(true, "", new { @class = "text-danger" })
+<h2>Results</h2>
 
-<p>
-    @Html.ActionLink("Create New", "Create", new { }, new { @class = "btn btn-succes" })
-</p>
 <table class="table">
     <tr>
         <th>
@@ -79,11 +75,7 @@
                 @Html.DisplayFor(modelItem => item.Winner.FullName)
             </td>
             <td>
-                @Html.ActionLink("Edit", "Edit", new { id = item.VotingId }, new { @class = "btn btn-primary btn-sm" })
-                @Html.ActionLink("Details", "Details", new { id = item.VotingId }, new { @class = "btn btn-info btn-sm" })
-                @Html.ActionLink("Results", "ShowResults", new { id = item.VotingId }, new { @class = "btn btn-success btn-sm", target = "_blank" })
-                @Html.ActionLink("Close", "Close", new { id = item.VotingId }, new { @class = "btn btn-warning btn-sm", onclick = "return confirm('Are you shure to delete this Voting event?');" })
-                @Html.ActionLink("Delete", "Delete", new { id = item.VotingId }, new { @class = "btn btn-danger btn-sm" })
+                @Html.ActionLink("Results", "ShowResults", new { id = item.VotingId }, new { @class = "btn btn-primary bt-sm", target = "_blank" })
             </td>
         </tr>
     }

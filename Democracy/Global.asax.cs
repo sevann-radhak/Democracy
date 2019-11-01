@@ -87,6 +87,7 @@ namespace Democracy
 
             // Asign role Admin
             userManager.AddToRole(userASP.Id, roleNameAdmin);
+            userManager.AddToRole(userASP.Id, roleNameUser);
         }
 
         /// <summary>

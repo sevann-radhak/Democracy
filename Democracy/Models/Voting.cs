@@ -66,5 +66,10 @@ namespace Democracy.Models
         /// Foreign key ICollection<Candidate>
         /// </summary>
         public virtual ICollection<Candidate> Candidates { get; set; }
+
+        /// <summary>
+        /// Foreign key ICollection<VotingDetail>
+        /// </summary>
+        public virtual ICollection<VotingDetail> VotingDetails { get; set; }
     }
 }
