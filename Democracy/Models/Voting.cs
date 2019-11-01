@@ -9,7 +9,7 @@ namespace Democracy.Models
     public class Voting
     {
         [Key]
-        public int VoutingId { get; set; }
+        public int VotingId { get; set; }
 
         [Required(ErrorMessage = "The field {0} is required")]
         [StringLength(60, ErrorMessage = "The field {0} can contain maximun {1} and minimun {2} characteres", MinimumLength = 3)]
@@ -56,5 +56,20 @@ namespace Democracy.Models
         /// Foreing key to State model
         /// </summary>
         public virtual State State { get; set; }
+
+        /// <summary>
+        /// Foreign key ICollection<VotingGroup>
+        /// </summary>
+        public virtual ICollection<VotingGroup> VotingGroups { get; set; }
+
+        /// <summary>
+        /// Foreign key ICollection<Candidate>
+        /// </summary>
+        public virtual ICollection<Candidate> Candidates { get; set; }
+
+        /// <summary>
+        /// Foreign key ICollection<VotingDetail>
+        /// </summary>
+        public virtual ICollection<VotingDetail> VotingDetails { get; set; }
     }
 }

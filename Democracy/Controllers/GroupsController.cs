@@ -12,6 +12,7 @@ using Democracy.ModelsView;
 
 namespace Democracy.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class GroupsController : Controller
     {
         private DemocracyContext db = new DemocracyContext();

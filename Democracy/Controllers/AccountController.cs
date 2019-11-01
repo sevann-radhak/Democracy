@@ -9,6 +9,11 @@ using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.Owin;
 using Microsoft.Owin.Security;
 using Democracy.Models;
+using Democracy.ModelsView;
+using System.IO;
+using Democracy.Classes;
+using Democracy.Context;
+using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace Democracy.Controllers
 {
@@ -22,7 +27,7 @@ namespace Democracy.Controllers
         {
         }
 
-        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager )
+        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
         {
             UserManager = userManager;
             SignInManager = signInManager;
@@ -34,9 +39,9 @@ namespace Democracy.Controllers
             {
                 return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
             }
-            private set 
-            { 
-                _signInManager = value; 
+            private set
+            {
+                _signInManager = value;
             }
         }
 
@@ -120,7 +125,7 @@ namespace Democracy.Controllers
             // If a user enters incorrect codes for a specified amount of time then the user account 
             // will be locked out for a specified amount of time. 
             // You can configure the account lockout settings in IdentityConfig
-            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent:  model.RememberMe, rememberBrowser: model.RememberBrowser);
+            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent: model.RememberMe, rememberBrowser: model.RememberBrowser);
             switch (result)
             {
                 case SignInStatus.Success:
@@ -147,29 +152,130 @@ namespace Democracy.Controllers
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Register(RegisterViewModel model)
+        public async Task<ActionResult> Register(RegisterUserView userView)
         {
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-                var result = await UserManager.CreateAsync(user, model.Password);
-                if (result.Succeeded)
+                // Upload image to server
+                string path = string.Empty;
+                string pic = string.Empty;
+
+                if (userView.Photo != null)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent:false, rememberBrowser:false);
-                    
-                    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
-                    // Send an email with this link
-                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+                    pic = Path.GetFileName(userView.Photo.FileName);
+                    path = Path.Combine(Server.MapPath("~/Content/Photos"), pic);
+                    userView.Photo.SaveAs(path);
+
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        userView.Photo.InputStream.CopyTo(ms);
+                        byte[] array = ms.GetBuffer();
+                    }
+                }
+
+                // Create and save the record
+                var user = new User
+                {
+                    Address = userView.Address,
+                    FirstName = userView.FirstName,
+                    Grade = userView.Grade,
+                    Group = userView.Group,
+                    LastName = userView.LastName,
+                    Phone = userView.Phone,
+                    Photo = userView.Photo == null ? string.Empty : string.Format("~/Content/Photos/{0}", userView.Photo.FileName),
+                    UserName = userView.UserName
+                };
+
+                DemocracyContext db = new DemocracyContext();
+                db.Users.Add(user);
+
+                // Cath exception if email already exists
+                try
+                {
+                    db.SaveChanges();
+                    // Create the user as ASP User too
+                    var userASP = this.CreateASPUser(userView);
+
+                    // Login the user
+                    await SignInManager.SignInAsync(userASP, isPersistent: false, rememberBrowser: false);
 
                     return RedirectToAction("Index", "Home");
                 }
-                AddErrors(result);
+                catch (Exception ex)
+                {
+                    if (ex.InnerException != null
+                        && ex.InnerException.InnerException != null
+                        && ex.InnerException.InnerException.Message.Contains("UserNameIndex"))
+                    {
+                        ModelState.AddModelError(string.Empty, "The email has already used for ahoter user");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, ex.Message);
+                    }
+
+                    return View(userView);
+                }
+
+
+                //var user = new ApplicationUser { UserName = view.Email, Email = view.Email };
+                //var result = await UserManager.CreateAsync(user, view.Password);
+
+                //if (result.Succeeded)
+                //{
+                //    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
+
+                //    // For more information on how to enable account confirmation and password reset please visit https://go.microsoft.com/fwlink/?LinkID=320771
+                //    // Send an email with this link
+                //    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
+                //    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                //    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+
+                //    return RedirectToAction("Index", "Home");
+                //}
             }
 
             // If we got this far, something failed, redisplay form
-            return View(model);
+            return View(userView);
+        }
+
+        /// <summary>
+        /// Create the User as a ASP User too
+        /// </summary>
+        /// <param name="userView"></param>
+        /// <returns>ApplicationUser</returns>
+        private ApplicationUser CreateASPUser(RegisterUserView userView)
+        {
+            // User management
+            var userContext = new ApplicationDbContext();
+            var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(userContext));
+            var roleManager = new RoleManager<IdentityRole>(new RoleStore<IdentityRole>(userContext));
+
+            // Create User role
+            string roleName = "User";
+
+            // Check if Role Exists, if not create it
+            if (!roleManager.RoleExists(roleName))
+            {
+                roleManager.Create(new IdentityRole(roleName));
+            }
+
+            // Create the ASP User
+            var userASP = new ApplicationUser
+            {
+                UserName = userView.UserName,
+                Email = userView.UserName,
+                PhoneNumber = userView.Phone
+            };
+
+            // Register the ASP User
+            userManager.Create(userASP, userView.Password);
+
+            // Add user to role
+            userASP = userManager.FindByName(userView.UserName);
+            userManager.AddToRole(userASP.Id, roleName);
+
+            return userASP;
         }
 
         //

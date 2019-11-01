@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Data;
 using System.Data.Entity;
+using System.Data.SqlClient;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Web;
 using System.Web.Mvc;
+using CrystalDecisions.CrystalReports.Engine;
 using Democracy.Context;
 using Democracy.Models;
 using Democracy.ModelsView;
@@ -15,18 +18,137 @@ using Microsoft.AspNet.Identity.EntityFramework;
 
 namespace Democracy.Controllers
 {
-    [Authorize]
     public class UsersController : Controller
     {
         private DemocracyContext db = new DemocracyContext();
 
-        // GET: Users
-        public ActionResult Index()
+        /// <summary>
+        /// GET: Edit personal info for usres
+        /// </summary>
+        /// <returns></returns>
+        [Authorize(Roles = "User")]
+        public ActionResult MySettings()
         {
-            return View(db.Users.ToList());
+            var user = db.Users.Where(u => u.UserName == this.User.Identity.Name).FirstOrDefault();
+
+            UserSettingsView userSettingsView = new UserSettingsView
+            {
+                Address = user.Address,
+                FirstName = user.FirstName,
+                Grade = user.Grade,
+                Group = user.Group,
+                LastName = user.LastName,
+                Phone = user.Phone,
+                Photo = user.Photo,
+                UserId = user.UserId,
+                UserName = user.UserName
+            };
+
+            return View(userSettingsView);
         }
 
-        // GET: Users/Details/5
+        /// <summary>
+        /// POST: Edit personal info for usres
+        /// </summary>
+        /// <param name="view"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "User")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult MySettings(UserSettingsView view)
+        {
+            if (ModelState.IsValid)
+            {
+                // Upload image to server
+                string path = string.Empty;
+                string pic = string.Empty;
+
+                if (view.NewPhoto != null)
+                {
+                    pic = Path.GetFileName(view.NewPhoto.FileName);
+                    path = Path.Combine(Server.MapPath("~/Content/Photos"), pic);
+                    view.NewPhoto.SaveAs(path);
+
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        view.NewPhoto.InputStream.CopyTo(ms);
+                        byte[] array = ms.GetBuffer();
+                    }
+                }
+
+                // Create a User object
+                User user = db.Users.Find(view.UserId);
+
+                user.Address = view.Address;
+                user.FirstName = view.FirstName;
+                user.Grade = view.Grade;
+                user.Group = view.Group;
+                user.LastName = view.LastName;
+                user.Phone = view.Phone;
+
+                // Validate if user changes photo
+                if (!string.IsNullOrEmpty(pic))
+                {
+                    user.Photo = string.Format("~/Content/Photos/{0}", pic);
+                }
+
+                // Modify record
+                db.Entry(user).State = EntityState.Modified;
+                db.SaveChanges();
+
+                return RedirectToAction("Index", "Home");
+            }
+
+            
+
+            return View(view);
+        }
+
+        /// <summary>
+        /// GET: Users
+        /// </summary>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult Index()
+        {
+
+            var userContext = new ApplicationDbContext();
+            var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(userContext));
+
+            var users = db.Users.ToList();
+
+            List<UserIndexView> usersView = new List<UserIndexView>();
+
+            foreach (var user in users)
+            {
+                var userASP = userManager.FindByName(user.UserName);
+
+                usersView.Add(new UserIndexView
+                {
+                    Address = user.Address,
+                    Candidates = user.Candidates,
+                    FirstName = user.FirstName,
+                    Grade = user.Grade,
+                    Group = user.Group,
+                    GroupMembers = user.GroupMembers,
+                    IsAdmin = userASP != null && userManager.IsInRole(userASP.Id, "Admin"),
+                    LastName = user.LastName,
+                    Phone = user.Phone,
+                    Photo = user.Photo,
+                    UserId = user.UserId,
+                    UserName = user.UserName
+                });
+            }
+
+            return View(usersView);
+        }
+
+        /// <summary>
+        /// GET: Users/Details/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Details(int? id)
         {
             if (id == null)
@@ -42,14 +164,17 @@ namespace Democracy.Controllers
         }
 
         // GET: Users/Create
+        [Authorize(Roles = "Admin")]
         public ActionResult Create()
         {
             return View();
         }
 
-        // POST: Users/Create
-        // To protect from overposting attacks, please enable the specific properties you want to bind to, for 
-        // more details see https://go.microsoft.com/fwlink/?LinkId=317598.
+        /// <summary>
+        /// POST: Users/Create
+        /// </summary>
+        /// <param name="userView"></param>
+        /// <returns></returns>
         [HttpPost]
         [ValidateAntiForgeryToken]
         public ActionResult Create(UserView userView)
@@ -76,8 +201,8 @@ namespace Democracy.Controllers
                 }
             }
 
-            // Save record
-            var user = new User
+            // Create and save the record
+            User user = new User
             {
                 Address = userView.Address,
                 FirstName = userView.FirstName,
@@ -121,6 +246,7 @@ namespace Democracy.Controllers
         /// After creating User, create the ASP User
         /// </summary>
         /// <param name="user"></param>
+        [Authorize(Roles = "Admin")]
         private void CreateASPUser(UserView userView)
         {
             // User management
@@ -138,7 +264,7 @@ namespace Democracy.Controllers
             }
 
             // Create the ASP User
-            var userAPS = new ApplicationUser
+            var userASP = new ApplicationUser
             {
                 UserName = userView.UserName,
                 Email = userView.UserName,
@@ -146,14 +272,19 @@ namespace Democracy.Controllers
             };
 
             // Register the ASP User
-            userManager.Create(userAPS, userAPS.UserName);
+            userManager.Create(userASP, userASP.UserName);
 
             // Add user to role
-            userAPS = userManager.FindByName(userView.UserName);
-            userManager.AddToRole(userAPS.Id, roleName);
+            userASP = userManager.FindByName(userView.UserName);
+            userManager.AddToRole(userASP.Id, roleName);
         }
 
-        // GET: Users/Edit/5
+        /// <summary>
+        /// GET: Users/Edit/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Edit(int? id)
         {
             if (id == null)
@@ -215,6 +346,7 @@ namespace Democracy.Controllers
 
             // Create a User object
             User user = db.Users.Find(userView.UserId);
+
             user.Address = userView.Address;
             user.FirstName = userView.FirstName;
             user.Grade = userView.Grade;
@@ -235,22 +367,34 @@ namespace Democracy.Controllers
             return RedirectToAction("Index");
         }
 
-        // GET: Users/Delete/5
+        /// <summary>
+        /// GET: Users/Delete/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
         public ActionResult Delete(int? id)
         {
             if (id == null)
             {
                 return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
             }
+
             User user = db.Users.Find(id);
+
             if (user == null)
             {
                 return HttpNotFound();
             }
+
             return View(user);
         }
 
-        // POST: Users/Delete/5
+        /// <summary>
+        /// POST: Users/Delete/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public ActionResult DeleteConfirmed(int id)
@@ -269,17 +413,135 @@ namespace Democracy.Controllers
                     && ex.InnerException.InnerException != null
                     && ex.InnerException.InnerException.Message.Contains("REFERENCE"))
                 {
-                    ViewBag.Error = "Cant not delete the record because has related records";
+                    ModelState.AddModelError(string.Empty, "Cant not delete the record because it has related records");
                 }
                 else
                 {
-                    ViewBag.Error = ex.Message;
+                    ModelState.AddModelError(string.Empty, ex.Message);
                 }
 
                 return View(user);
             }
-            
+
             return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// Users/OnOffAdmin/{id}
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult OnOffAdmin(int? id)
+        {
+            if (id == null)
+            {
+                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
+            }
+
+            var user = db.Users.Find(id);
+
+            if (user != null)
+            {
+                var userContext = new ApplicationDbContext();
+                var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(userContext));
+                var userASP = userManager.FindByEmail(user.UserName);
+
+                if (userASP != null)
+                {
+                    if (userManager.IsInRole(userASP.Id, "Admin"))
+                    {
+                        userManager.RemoveFromRole(userASP.Id, "Admin");
+                    }
+                    else
+                    {
+                        userManager.AddToRole(userASP.Id, "Admin");
+                    }
+                }
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        /// <summary>
+        /// Users report in PDF
+        /// </summary>
+        /// <param></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult PDF(int? id)
+        {
+            var report = this.GenerateUserReport();
+            var stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.PortableDocFormat);
+
+            return File(stream, "application/pdf");
+        }
+
+        /// <summary>
+        /// Users report in XLS
+        /// </summary>
+        /// <param></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult XLS(int? id)
+        {
+            var report = this.GenerateUserReport();
+            var stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.Excel);
+
+            return File(stream, "application/xls", "Users.xls");
+        }
+
+        /// <summary>
+        /// Users report in DOC
+        /// </summary>
+        /// <param></param>
+        /// <returns></returns>
+        [Authorize(Roles = "Admin")]
+        public ActionResult DOC(int? id)
+        {
+            var report = this.GenerateUserReport();
+            var stream = report.ExportToStream(CrystalDecisions.Shared.ExportFormatType.WordForWindows);
+
+            return File(stream, "application/doc", "Users.doc");
+        }
+
+        /// <summary>
+        /// Generate a report for differet formats
+        /// </summary>
+        /// <returns></returns>
+        private ReportClass GenerateUserReport()
+        {
+            // Variables and imports for ADO connection to DataBase
+            var connectionString = ConfigurationManager.ConnectionStrings["DefaultConnection"].ConnectionString;
+            var connection = new SqlConnection(connectionString);
+            var dataTable = new DataTable();
+            var sql = "SELECT * FROM Users ORDER BY LastName, FirstName";
+
+            try
+            {
+                connection.Open();
+                var commmand = new SqlCommand(sql, connection);
+                var adapter = new SqlDataAdapter(commmand);
+
+                adapter.Fill(dataTable);
+            }
+            catch (Exception ex)
+            {
+                ex.ToString();
+                throw;
+            }
+
+            // Create the report object -> it will be the real report
+            var report = new ReportClass();
+            report.FileName = Server.MapPath("/Reports/Users.rpt");
+
+            // Load the report in memory
+            report.Load();
+
+            // Load data origin
+            report.SetDataSource(dataTable);
+
+            return report;
         }
 
         protected override void Dispose(bool disposing)
